@@ -14,24 +14,39 @@ const HTTP_CONTENT_TYPE = {
   //...
 };
 
+class RequestError extends Error {
+  errorCode = null;
+
+  constructor(message, errorCode, options) {
+    super(message, options);
+    this.errorCode = errorCode;
+  }
+}
+
 // Задача #1
 async function handleLogin(username = "User", password = "qwerty12345") {
-  const body = JSON.stringify({
-    username,
-    password,
-  });
+  try {
+    const body = JSON.stringify({
+      username,
+      password,
+    });
 
-  const result = await fetch(`${BASE_URL}/login`, {
-    method: HTTP_METHOD.POST,
-    headers: {
-      "Content-Type": HTTP_CONTENT_TYPE.JSON,
-    },
-    body,
-  });
+    const result = await fetch(`${BASE_URL}/login`, {
+      method: HTTP_METHOD.POST,
+      headers: {
+        "Content-Type": HTTP_CONTENT_TYPE.JSON,
+      },
+      body,
+    });
 
-  if (result.ok) {
-    const data = await result.json();
-    localStorage.setItem("accessToken", data.accessToken);
+    if (result.ok) {
+      const data = await result.json();
+      localStorage.setItem("accessToken", data.accessToken);
+    } else {
+      throw new RequestError("Не удалось авторизоваться", result.status);
+    }
+  } catch (error) {
+    alert(`[ERROR] ${error.message} (${error.errorCode}) `);
   }
 }
 
@@ -47,34 +62,42 @@ async function handleSelectChange({ target: { value } }) {
 
 // Задача #3 и #4
 async function handleSearchTasks() {
+  if (!store.isAuthorized()) return;
+
   const token = localStorage.getItem("accessToken");
   const title = localStorage.getItem("searchTitle");
   const status = localStorage.getItem("filterStatus");
 
-  const analyticsBody = JSON.stringify({
-    action: "search",
-    searchTitle: title,
-    filterStatus: status,
-  });
-  navigator.sendBeacon(`${BASE_URL}/analytics`, analyticsBody);
+  try {
+    const analyticsBody = JSON.stringify({
+      action: "search",
+      searchTitle: title,
+      filterStatus: status,
+    });
+    navigator.sendBeacon(`${BASE_URL}/analytics`, analyticsBody);
 
-  const params = new URLSearchParams();
-  if (title) params.append("title", title);
-  if (status) params.append("status", status);
+    const params = new URLSearchParams();
+    if (title) params.append("title", title);
+    if (status) params.append("status", status);
 
-  const queryString = params.toString();
-  const requestURL = `${BASE_URL}/tasks${queryString ? "?" + queryString : ""}`;
+    const queryString = params.toString();
+    const requestURL = `${BASE_URL}/tasks${queryString ? "?" + queryString : ""}`;
 
-  const result = await fetch(requestURL, {
-    method: HTTP_METHOD.GET,
-    headers: {
-      authorization: `Bearer ${token}`,
-    },
-  });
+    const result = await fetch(requestURL, {
+      method: HTTP_METHOD.GET,
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (result.ok) {
-    const data = await result.json();
-    localStorage.setItem("tasks", JSON.stringify(data.items));
+    if (result.ok) {
+      const data = await result.json();
+      localStorage.setItem("tasks", JSON.stringify(data.items));
+    } else {
+      throw new RequestError("Не удалось получить список задач", result.status);
+    }
+  } catch (error) {
+    alert(`[ERROR] ${error.message} (${error.errorCode}) `);
   }
 }
 
@@ -82,15 +105,21 @@ async function handleSearchTasks() {
 async function handleLogout() {
   const token = localStorage.getItem("accessToken");
 
-  const result = await fetch(`${BASE_URL}/logout`, {
-    method: HTTP_METHOD.POST,
-    headers: {
-      authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const result = await fetch(`${BASE_URL}/logout`, {
+      method: HTTP_METHOD.POST,
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (result.ok) {
-    localStorage.removeItem("accessToken");
+    if (result.ok) {
+      localStorage.removeItem("accessToken");
+    } else {
+      throw new RequestError("Не удалось выйти из аккаунта", result.status);
+    }
+  } catch (error) {
+    alert(`[ERROR] ${error.message} (${error.errorCode}) `);
   }
 }
 
