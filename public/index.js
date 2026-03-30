@@ -69,13 +69,6 @@ async function handleSearchTasks() {
   const status = localStorage.getItem("filterStatus");
 
   try {
-    const analyticsBody = JSON.stringify({
-      action: "search",
-      searchTitle: title,
-      filterStatus: status,
-    });
-    navigator.sendBeacon(`${BASE_URL}/analytics`, analyticsBody);
-
     const params = new URLSearchParams();
     if (title) params.append("title", title);
     if (status) params.append("status", status);
@@ -91,6 +84,13 @@ async function handleSearchTasks() {
     });
 
     if (result.ok) {
+      const analyticsBody = JSON.stringify({
+        action: "search",
+        searchTitle: title,
+        filterStatus: status,
+      });
+      navigator.sendBeacon(`${BASE_URL}/analytics`, analyticsBody);
+
       const data = await result.json();
       localStorage.setItem("tasks", JSON.stringify(data.items));
     } else {
